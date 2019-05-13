@@ -2,3 +2,5 @@ secrets/
 !secrets/.gitkeep
 vendor/
 !vendor/.gitkeep
+dist/
+!dist/.gitkeep
