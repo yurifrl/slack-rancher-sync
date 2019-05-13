@@ -1,0 +1,9 @@
+builds:
+  - binary: slack-rancher-sync 
+    main: cmd/main.go
+    goos:
+      - linux
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=0

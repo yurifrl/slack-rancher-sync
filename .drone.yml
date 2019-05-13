@@ -1,0 +1,76 @@
+workspace:
+  base: /go
+  path: src/github.com/cloud104/slack-rancher-sync
+
+pipeline:
+  deps:
+    image: instrumentisto/dep:alpine
+    commands:
+      - cd opscenter
+      - dep ensure -v -vendor-only
+
+  fmt:
+    image: golang:alpine
+    group: "test"
+    commands:
+      - go fmt ./pkg/... ./cmd/...
+
+  vet:
+    image: golang:alpine
+    group: "test"
+    commands:
+      - go vet ./pkg/... ./cmd/...
+    environment:
+      - CGO_ENABLED=0
+      - GOOS=linux
+
+  publish-latest-image:
+    image: plugins/docker
+    group: "deploy"
+    repo: quay.io/cloud104/${DRONE_REPO_NAME}
+    secrets: [ docker_username, docker_password ]
+    environment:
+      - DOCKER_REGISTRY=quay.io
+    tags:
+      - "latest"
+      - ${DRONE_BRANCH/\//-}-${DRONE_BUILD_NUMBER}
+    when:
+      branch:
+        include: [ feature/*, fix/* ]
+
+
+  # Tag when is develop
+  tag:
+    image: cloud104/drone-github-tag
+    group: "release"
+    secrets: [ github_token ]
+    when:
+      branch:
+        include: [ beta, develop, master ]
+
+  # Release binary when is tag
+  publish-binary-release:
+    image: goreleaser/goreleaser
+    pull: true
+    group: "release"
+    secrets: [ github_token ]
+    commands:
+      - goreleaser
+    when:
+      event: tag
+
+  # Release image when is tag
+  publish-tagged-image:
+    image: plugins/docker
+    group: "release"
+    repo: quay.io/cloud104/${DRONE_REPO_NAME}
+    secrets: [ docker_username, docker_password ]
+    auto_tag: true
+    when:
+      event: tag
+
+
+  slack:
+    image: plugins/slack
+    username: ${DRONE_REPO_NAME}
+    secrets: [ slack_webhook, plugin_webhook ]
